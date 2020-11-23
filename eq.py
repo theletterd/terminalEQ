@@ -2,11 +2,7 @@
 import argparse
 import curses
 from curses import wrapper
-import queue
-import sys
 import shutil
-
-import math
 
 import numpy as np
 import sounddevice as sd
@@ -75,7 +71,6 @@ WHITE = curses.color_pair(7)
 GREEN_BLOCK = curses.color_pair(8)
 
 
-
 class Bumper(object):
 
     def __init__(self, x_displacement, window):
@@ -94,7 +89,6 @@ class Bumper(object):
         if level >= 7:
             color = RED
         return color
-        
 
     def set_level(self, level):
         self.level = level
@@ -108,18 +102,24 @@ class Bumper(object):
         if self.level >= self.max_level:
             self.max_level = self.level
 
-
     def draw(self):
         for i in range(self.level):
             color = self.get_color_at_level(i)
-            self.window.addstr(self.y_displacement - i , self.x_displacement , "-", color)
 
-        self.window.addstr(self.y_displacement - int(self.max_level) +1, self.x_displacement, '-', WHITE)
+            # draw the bumper itself.
+            self.window.addstr(self.y_displacement - i, self.x_displacement, "-", color)
+            self.window.addstr(self.y_displacement - i, self.x_displacement + 1 , "-", color)
+
+        # draw max level
+        self.window.addstr(self.y_displacement - int(self.max_level) + 1, self.x_displacement, '-', WHITE)
+        self.window.addstr(self.y_displacement - int(self.max_level) + 1, self.x_displacement + 1, '-', WHITE)
+
+        # draw numerical value below bumper. Pretty meaningless.
         #self.window.addstr(self.y_displacement + 1, self.x_displacement, str(self.level), WHITE)
 
 
 class Equalizer(object):
-    
+
     def __init__(self):
         self.window = curses.newwin(100, 200, 0, 0)
         self.window.nodelay(1)
@@ -131,7 +131,7 @@ class Equalizer(object):
         self.freq_bumpers = []
         self.sample_rate = 0
 
-        
+
     def set_sample_rate(self, sample_rate):
         # TODO generate bands automatically
         self.sample_rate = sample_rate
@@ -189,8 +189,6 @@ class Equalizer(object):
         for bumper_index, (bottom_freq, top_freq) in enumerate(self.frequency_bands):
             bottom_index = int(bottom_freq / frequency_step)
             top_index = int(top_freq / frequency_step)
-            level_sum = sum(power[bottom_index:top_index])
-            num_buckets = len(power[bottom_index:top_index])
 
             try:
                 level = max(power[bottom_index:top_index]) *1000
@@ -206,13 +204,10 @@ class Equalizer(object):
 
         self.volume_bumper.set_level(int(sum(bumper_vals)/len(bumper_vals)))
         self.volume_bumper.draw()
-        
+
         self.window.refresh()
 
 def runner(stdscr):
-
-    # TODO read from audio stream?
-
     equalizer = Equalizer()
 
     try:
@@ -220,11 +215,11 @@ def runner(stdscr):
             device=args.device, channels=1,
             samplerate=args.samplerate, callback=equalizer.audio_callback,
             blocksize=int(48000 * 50 / 1000))
-        
+
         equalizer.set_sample_rate(stream.samplerate)
 
         with stream:
-            sd.sleep(100000000) # something absurdly big.
+            sd.sleep(100000000) # something absurdly big so that the program doesn't just shut down
     except Exception as e:
         raise e
 
